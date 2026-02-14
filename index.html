@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VGC MultiCalc</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>VGC MultiCalc</h1>
+    <p class="subtitle">Paste two teams, get every damage calc at once</p>
+  </header>
+
+  <main>
+    <section class="input-section">
+      <div class="paste-container">
+        <div class="paste-box">
+          <label for="full-paste">Your Team (full paste with EVs/Nature)</label>
+          <textarea id="full-paste" placeholder="Paste your team here...
+Flutter Mane @ Booster Energy
+Ability: Protosynthesis
+Level: 50
+Tera Type: Fairy
+EVs: 0 HP / 0 Atk / 0 Def / 252 SpA / 4 SpD / 252 Spe
+Timid Nature
+- Moonblast
+- Shadow Ball
+- Dazzling Gleam
+- Protect"></textarea>
+        </div>
+        <div class="paste-box">
+          <label for="closed-paste">Opponent Team (closed — species/moves/items only)</label>
+          <textarea id="closed-paste" placeholder="Paste opponent team here...
+Incineroar @ Safety Goggles
+Ability: Intimidate
+Level: 50
+Tera Type: Ghost
+- Fake Out
+- Flare Blitz
+- Knock Off
+- Parting Shot"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section id="spread-section" class="spread-section hidden">
+      <h2>Select Spreads for Opponent Team</h2>
+      <div id="spread-selectors" class="spread-grid"></div>
+    </section>
+
+    <section class="calc-controls">
+      <button id="calc-btn" disabled>Calculate All Matchups</button>
+    </section>
+
+    <section id="results-section" class="results-section hidden">
+      <div class="result-block">
+        <h2>Your Team Attacking</h2>
+        <div id="grid-attacking" class="grid-wrapper"></div>
+      </div>
+      <div class="result-block">
+        <h2>Opponent Attacking</h2>
+        <div id="grid-defending" class="grid-wrapper"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/data/production.min.js"></script>
+  <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/production.min.js"></script>
+  <script src="spreads-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
