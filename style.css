@@ -160,6 +160,106 @@ header h1 {
   display: none !important;
 }
 
+/* Tera toggles */
+.tera-section {
+  margin-bottom: 1.5rem;
+}
+
+.tera-section h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: #ccc;
+}
+
+.tera-section h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+  color: #aaa;
+}
+
+.tera-columns {
+  display: flex;
+  gap: 1rem;
+}
+
+.tera-columns > div {
+  flex: 1;
+}
+
+.tera-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #16213e;
+  border: 1px solid #333;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  margin: 0.2rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tera-toggle:hover {
+  border-color: #4a90d9;
+}
+
+.tera-toggle input {
+  accent-color: #4a90d9;
+  cursor: pointer;
+}
+
+.tera-toggle.checked {
+  background: #0f3460;
+  border-color: #4a90d9;
+}
+
+/* Field / Weather */
+.field-section {
+  margin-bottom: 1.5rem;
+}
+
+.field-section h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  color: #ccc;
+}
+
+.weather-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.weather-radio {
+  cursor: pointer;
+}
+
+.weather-radio input {
+  display: none;
+}
+
+.weather-radio span {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: #16213e;
+  color: #ccc;
+  font-size: 0.8rem;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.weather-radio input:checked + span {
+  background: #0f3460;
+  border-color: #4a90d9;
+  color: #fff;
+}
+
+.weather-radio:hover span {
+  border-color: #4a90d9;
+}
+
 /* Calculate button */
 .calc-controls {
   text-align: center;

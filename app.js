@@ -12,6 +12,9 @@
   const resultsSection = document.getElementById('results-section');
   const gridAttacking = document.getElementById('grid-attacking');
   const gridDefending = document.getElementById('grid-defending');
+  const teraSection = document.getElementById('tera-section');
+  const teraFullEl = document.getElementById('tera-full');
+  const teraClosedEl = document.getElementById('tera-closed');
 
   let fullTeam = [];
   let closedTeam = [];
@@ -232,6 +235,48 @@
     }
   }
 
+  // ─── Tera toggle UI ─────────────────────────────────────
+  function buildTeraToggles(fullTeamArr, closedTeamArr) {
+    teraFullEl.innerHTML = '';
+    teraClosedEl.innerHTML = '';
+    let anyTera = false;
+
+    function renderToggles(team, container, teamKey) {
+      for (let i = 0; i < team.length; i++) {
+        const mon = team[i];
+        if (!mon.teraType) continue;
+        anyTera = true;
+
+        const label = document.createElement('label');
+        label.className = 'tera-toggle';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.team = teamKey;
+        cb.dataset.index = i;
+        cb.addEventListener('change', function () {
+          label.classList.toggle('checked', cb.checked);
+        });
+
+        const span = document.createElement('span');
+        span.textContent = `${mon.name} \u2192 ${mon.teraType}`;
+
+        label.appendChild(cb);
+        label.appendChild(span);
+        container.appendChild(label);
+      }
+    }
+
+    renderToggles(fullTeamArr, teraFullEl, 'full');
+    renderToggles(closedTeamArr, teraClosedEl, 'closed');
+
+    if (anyTera) {
+      teraSection.classList.remove('hidden');
+    } else {
+      teraSection.classList.add('hidden');
+    }
+  }
+
   // ─── Calc engine ──────────────────────────────────────────
 
   function isStatusMove(moveName) {
@@ -243,7 +288,7 @@
     }
   }
 
-  function buildCalcPokemon(mon) {
+  function buildCalcPokemon(mon, isTera) {
     return new calc.Pokemon(gen, mon.name, {
       level: mon.level,
       item: mon.item || undefined,
@@ -251,19 +296,19 @@
       nature: mon.nature || 'Serious',
       evs: mon.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
       ivs: mon.ivs,
-      // Don't pass teraType — paste's "Tera Type:" means what the mon CAN
-      // Tera into, not that it's currently Terastallized.
+      teraType: isTera && mon.teraType ? mon.teraType : undefined,
     });
   }
 
-  function calculateAllMatchups(attackers, defenders) {
+  function calculateAllMatchups(attackers, defenders, atkTeraSet, defTeraSet, field) {
     const results = [];
 
-    for (const atk of attackers) {
+    for (let ai = 0; ai < attackers.length; ai++) {
+      const atk = attackers[ai];
       const row = [];
       let atkPoke;
       try {
-        atkPoke = buildCalcPokemon(atk);
+        atkPoke = buildCalcPokemon(atk, atkTeraSet.has(ai));
       } catch (e) {
         console.warn(`Failed to create Pokemon "${atk.name}":`, e);
         row.push(...defenders.map(() => null));
@@ -271,10 +316,11 @@
         continue;
       }
 
-      for (const def of defenders) {
+      for (let di = 0; di < defenders.length; di++) {
+        const def = defenders[di];
         let defPoke;
         try {
-          defPoke = buildCalcPokemon(def);
+          defPoke = buildCalcPokemon(def, defTeraSet.has(di));
         } catch (e) {
           console.warn(`Failed to create Pokemon "${def.name}":`, e);
           row.push(null);
@@ -290,7 +336,6 @@
 
           try {
             const move = new calc.Move(gen, moveName);
-            const field = new calc.Field({ gameType: 'Doubles' });
             const result = calc.calculate(gen, atkPoke, defPoke, move, field);
             const range = result.range();
             const defHP = defPoke.rawStats.hp;
@@ -424,6 +469,12 @@
       spreadSection.classList.add('hidden');
     }
 
+    if (fullTeam.length > 0 && closedTeam.length > 0) {
+      buildTeraToggles(fullTeam, closedTeam);
+    } else {
+      teraSection.classList.add('hidden');
+    }
+
     calcBtn.disabled = !(fullTeam.length > 0 && closedTeam.length > 0);
 
     // Hide old results when teams change
@@ -436,12 +487,25 @@
   calcBtn.addEventListener('click', function () {
     applySelectedSpreads();
 
+    // Read Tera checkbox states
+    const fullTeraSet = new Set();
+    const closedTeraSet = new Set();
+    teraSection.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+      const idx = parseInt(cb.dataset.index);
+      if (cb.dataset.team === 'full') fullTeraSet.add(idx);
+      else closedTeraSet.add(idx);
+    });
+
+    // Read weather
+    const weatherVal = document.querySelector('input[name="weather"]:checked').value || undefined;
+    const field = new calc.Field({ gameType: 'Doubles', weather: weatherVal });
+
     // Direction 1: Your team attacking opponent
-    const atkResults = calculateAllMatchups(fullTeam, closedTeam);
+    const atkResults = calculateAllMatchups(fullTeam, closedTeam, fullTeraSet, closedTeraSet, field);
     renderGrid(atkResults, closedTeam, gridAttacking);
 
     // Direction 2: Opponent attacking your team
-    const defResults = calculateAllMatchups(closedTeam, fullTeam);
+    const defResults = calculateAllMatchups(closedTeam, fullTeam, closedTeraSet, fullTeraSet, field);
     renderGrid(defResults, fullTeam, gridDefending);
 
     resultsSection.classList.remove('hidden');
