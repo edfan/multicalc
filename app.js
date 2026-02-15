@@ -251,7 +251,8 @@
       nature: mon.nature || 'Serious',
       evs: mon.evs || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
       ivs: mon.ivs,
-      teraType: mon.teraType || undefined,
+      // Don't pass teraType — paste's "Tera Type:" means what the mon CAN
+      // Tera into, not that it's currently Terastallized.
     });
   }
 
