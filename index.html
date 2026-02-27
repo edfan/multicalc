@@ -30,8 +30,14 @@ Timid Nature
 - Protect"></textarea>
         </div>
         <div class="paste-box">
-          <label for="closed-paste">Opponent Team (closed — species/moves/items only)</label>
-          <textarea id="closed-paste" placeholder="Paste opponent team here...
+          <label>Opponent Team</label>
+          <div class="opponent-mode-toggle">
+            <button class="mode-btn active" data-mode="paste">Paste Team</button>
+            <button class="mode-btn" data-mode="rk9">Load from RK9</button>
+          </div>
+
+          <div id="opponent-paste-mode">
+            <textarea id="closed-paste" placeholder="Paste opponent team here...
 Incineroar @ Safety Goggles
 Ability: Intimidate
 Level: 50
@@ -40,6 +46,27 @@ Tera Type: Ghost
 - Flare Blitz
 - Knock Off
 - Parting Shot"></textarea>
+          </div>
+
+          <div id="opponent-rk9-mode" class="hidden">
+            <div class="rk9-inputs">
+              <input type="text" id="rk9-tournament-id" placeholder="Tournament ID (e.g. WCS02wcZg4VXtaqyIk5L)">
+              <div class="rk9-name-row">
+                <input type="text" id="rk9-first-name" placeholder="Your First Name">
+                <input type="text" id="rk9-last-name" placeholder="Your Last Name">
+              </div>
+              <button id="rk9-find-btn">Find Opponents</button>
+            </div>
+
+            <div id="rk9-results" class="rk9-results hidden">
+              <label for="rk9-round-select">Round</label>
+              <select id="rk9-round-select"></select>
+              <div id="rk9-opponent-name" class="rk9-opponent-name"></div>
+              <button id="rk9-load-btn">Load Team</button>
+            </div>
+
+            <div id="rk9-status" class="rk9-status"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -93,6 +120,7 @@ Tera Type: Ghost
   <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/data/production.min.js"></script>
   <script src="https://unpkg.com/@smogon/calc@0.10.0/dist/production.min.js"></script>
   <script src="spreads-data.js"></script>
+  <script src="rk9.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

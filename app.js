@@ -19,6 +19,14 @@
   let fullTeam = [];
   let closedTeam = [];
 
+  // ─── Persist & restore saved fields ─────────────────────
+  function saveField(key, value) {
+    try { localStorage.setItem('multicalc_' + key, value); } catch (e) { /* ignore */ }
+  }
+  function loadField(key) {
+    try { return localStorage.getItem('multicalc_' + key) || ''; } catch (e) { return ''; }
+  }
+
   // ─── Paste parser ─────────────────────────────────────────
   function parseTeamPaste(paste, isFull) {
     const blocks = paste.split(/\n\s*\n/).filter(b => b.trim());
@@ -47,13 +55,14 @@
       if (itemSplit.length > 1) {
         mon.item = itemSplit[1].trim();
       }
+      // Remove gender suffixes before checking for nickname
+      namePart = namePart.replace(/\s*\(M\)\s*$/, '').replace(/\s*\(F\)\s*$/, '').trim();
       // Check for nickname: "Nickname (Species)"
       const nickMatch = namePart.match(/^.+?\((.+)\)\s*$/);
       if (nickMatch) {
         mon.name = nickMatch[1].trim();
       } else {
-        // Remove gender suffixes
-        mon.name = namePart.replace(/\s*\(M\)\s*$/, '').replace(/\s*\(F\)\s*$/, '').trim();
+        mon.name = namePart;
       }
 
       for (let i = 1; i < lines.length; i++) {
@@ -481,8 +490,181 @@
     resultsSection.classList.add('hidden');
   }
 
-  fullPasteEl.addEventListener('input', debouncedParse);
+  // ─── RK9 mode toggle & handlers ──────────────────────────
+  const modeBtns = document.querySelectorAll('.mode-btn');
+  const opponentPasteMode = document.getElementById('opponent-paste-mode');
+  const opponentRk9Mode = document.getElementById('opponent-rk9-mode');
+  const rk9TournamentId = document.getElementById('rk9-tournament-id');
+  const rk9FirstName = document.getElementById('rk9-first-name');
+  const rk9LastName = document.getElementById('rk9-last-name');
+  const rk9FindBtn = document.getElementById('rk9-find-btn');
+  const rk9RoundSelect = document.getElementById('rk9-round-select');
+  const rk9Results = document.getElementById('rk9-results');
+  const rk9OpponentName = document.getElementById('rk9-opponent-name');
+  const rk9LoadBtn = document.getElementById('rk9-load-btn');
+  const rk9Status = document.getElementById('rk9-status');
+
+  let rk9Rounds = [];
+
+  modeBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      modeBtns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      if (mode === 'paste') {
+        opponentPasteMode.classList.remove('hidden');
+        opponentRk9Mode.classList.add('hidden');
+      } else {
+        opponentPasteMode.classList.add('hidden');
+        opponentRk9Mode.classList.remove('hidden');
+      }
+    });
+  });
+
+  function setRk9Status(msg, isError) {
+    rk9Status.textContent = msg;
+    rk9Status.className = 'rk9-status' + (isError ? ' error' : '');
+  }
+
+  rk9FindBtn.addEventListener('click', async function () {
+    const tournamentId = rk9TournamentId.value.trim();
+    const firstName = rk9FirstName.value.trim();
+    const lastName = rk9LastName.value.trim();
+
+    if (!tournamentId || !firstName || !lastName) {
+      setRk9Status('Please fill in all fields.', true);
+      return;
+    }
+
+    rk9FindBtn.disabled = true;
+    setRk9Status('Fetching pairings...', false);
+    rk9Results.classList.add('hidden');
+
+    try {
+      const pairings = await fetchAllPairings(tournamentId);
+      if (!pairings.length) {
+        setRk9Status('No pairings found for this tournament.', true);
+        rk9FindBtn.disabled = false;
+        return;
+      }
+
+      rk9Rounds = findPlayerRounds(pairings, firstName, lastName);
+      if (!rk9Rounds.length) {
+        setRk9Status(`Player "${firstName} ${lastName}" not found in pairings.`, true);
+        rk9FindBtn.disabled = false;
+        return;
+      }
+
+      // Populate round dropdown
+      rk9RoundSelect.innerHTML = '';
+      for (const r of rk9Rounds) {
+        const opt = document.createElement('option');
+        const resultStr = r.result ? ' (' + r.result + ')' : '';
+        opt.value = r.round;
+        opt.textContent = 'Round ' + r.round + ' vs ' + r.opponent.firstName + ' ' + r.opponent.lastName + resultStr;
+        rk9RoundSelect.appendChild(opt);
+      }
+
+      // Default to last round
+      rk9RoundSelect.value = rk9Rounds[rk9Rounds.length - 1].round;
+      updateRk9OpponentDisplay();
+
+      rk9Results.classList.remove('hidden');
+      setRk9Status('Found ' + rk9Rounds.length + ' round(s).', false);
+    } catch (e) {
+      setRk9Status('Error: ' + e.message, true);
+    }
+
+    rk9FindBtn.disabled = false;
+  });
+
+  function updateRk9OpponentDisplay() {
+    const selectedRound = parseInt(rk9RoundSelect.value);
+    const roundData = rk9Rounds.find(function (r) { return r.round === selectedRound; });
+    if (roundData) {
+      rk9OpponentName.textContent = 'Opponent: ' + roundData.opponent.firstName + ' ' + roundData.opponent.lastName;
+    }
+  }
+
+  rk9RoundSelect.addEventListener('change', updateRk9OpponentDisplay);
+
+  rk9LoadBtn.addEventListener('click', async function () {
+    const tournamentId = rk9TournamentId.value.trim();
+    const selectedRound = parseInt(rk9RoundSelect.value);
+    const roundData = rk9Rounds.find(function (r) { return r.round === selectedRound; });
+
+    if (!roundData) {
+      setRk9Status('No round selected.', true);
+      return;
+    }
+
+    rk9LoadBtn.disabled = true;
+    setRk9Status('Fetching roster...', false);
+
+    try {
+      const roster = await fetchRoster(tournamentId);
+      const rosterEntry = findPlayerInRoster(roster, roundData.opponent.firstName, roundData.opponent.lastName);
+
+      if (!rosterEntry || !rosterEntry.teamId) {
+        setRk9Status('Could not find team list for ' + roundData.opponent.firstName + ' ' + roundData.opponent.lastName + '.', true);
+        rk9LoadBtn.disabled = false;
+        return;
+      }
+
+      setRk9Status('Fetching team list...', false);
+      const teamData = await fetchTeamList(tournamentId, rosterEntry.teamId);
+
+      if (!teamData.length) {
+        setRk9Status('Team list was empty or could not be parsed.', true);
+        rk9LoadBtn.disabled = false;
+        return;
+      }
+
+      // Set closedTeam and trigger existing calc flow
+      closedTeam = teamData;
+
+      // Populate the paste textarea for visibility
+      closedPasteEl.value = teamData.map(function (mon) {
+        let lines = [];
+        lines.push(mon.name + (mon.item ? ' @ ' + mon.item : ''));
+        if (mon.ability) lines.push('Ability: ' + mon.ability);
+        lines.push('Level: ' + mon.level);
+        if (mon.teraType) lines.push('Tera Type: ' + mon.teraType);
+        for (const move of mon.moves) {
+          lines.push('- ' + move);
+        }
+        return lines.join('\n');
+      }).join('\n\n');
+
+      buildSpreadSelectors(closedTeam);
+      if (fullTeam.length > 0) {
+        buildTeraToggles(fullTeam, closedTeam);
+      }
+      calcBtn.disabled = !(fullTeam.length > 0 && closedTeam.length > 0);
+
+      setRk9Status('Team loaded successfully!', false);
+    } catch (e) {
+      setRk9Status('Error: ' + e.message, true);
+    }
+
+    rk9LoadBtn.disabled = false;
+  });
+
+  fullPasteEl.addEventListener('input', function () {
+    saveField('fullPaste', fullPasteEl.value);
+    debouncedParse();
+  });
   closedPasteEl.addEventListener('input', debouncedParse);
+
+  rk9TournamentId.addEventListener('input', function () {
+    saveField('rk9Tournament', rk9TournamentId.value);
+  });
+  rk9FirstName.addEventListener('input', function () {
+    saveField('rk9FirstName', rk9FirstName.value);
+  });
+  rk9LastName.addEventListener('input', function () {
+    saveField('rk9LastName', rk9LastName.value);
+  });
 
   calcBtn.addEventListener('click', function () {
     applySelectedSpreads();
@@ -511,5 +693,18 @@
     resultsSection.classList.remove('hidden');
     resultsSection.scrollIntoView({ behavior: 'smooth' });
   });
+
+  // ─── Restore saved fields on load ──────────────────────
+  const savedPaste = loadField('fullPaste');
+  if (savedPaste) {
+    fullPasteEl.value = savedPaste;
+    parseTeams();
+  }
+  const savedTournament = loadField('rk9Tournament');
+  if (savedTournament) rk9TournamentId.value = savedTournament;
+  const savedFirst = loadField('rk9FirstName');
+  if (savedFirst) rk9FirstName.value = savedFirst;
+  const savedLast = loadField('rk9LastName');
+  if (savedLast) rk9LastName.value = savedLast;
 
 })();
